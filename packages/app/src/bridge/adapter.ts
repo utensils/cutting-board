@@ -8,7 +8,11 @@ import type { BridgeError } from "@cutting-board/protocol";
 import { onMcpRequest, bridgeReply, notifyAdapterReady, type McpRequestEvent } from "../lib/ipc";
 import { executeBridgeOp, BridgeOpError } from "../board/tldraw-ops";
 
-function toBridgeError(err: unknown): BridgeError {
+/**
+ * Map a thrown error to the wire `BridgeError`: a {@link BridgeOpError} keeps its
+ * specific code; anything else collapses to `internal`. Exported for testing.
+ */
+export function toBridgeError(err: unknown): BridgeError {
   if (err instanceof BridgeOpError) return { code: err.code, message: err.message };
   return { code: "internal", message: err instanceof Error ? err.message : String(err) };
 }

@@ -348,16 +348,22 @@ export function createServer({ bridge }: CreateServerOptions): McpServer {
       mimeType: "application/json",
     },
     async (uri) => {
-      const result = await bridge.request("get_board_snapshot", {});
-      return {
-        contents: [
-          {
-            uri: uri.href,
-            mimeType: "application/json",
-            text: JSON.stringify(result.snapshot, null, 2),
-          },
-        ],
-      };
+      try {
+        const result = await bridge.request("get_board_snapshot", {});
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: "application/json",
+              text: JSON.stringify(result.snapshot, null, 2),
+            },
+          ],
+        };
+      } catch (err) {
+        // Surface the same friendly message the tools use, rather than a raw
+        // JSON-RPC error, when the app is down or the editor isn't ready.
+        throw new Error(describeError(err));
+      }
     },
   );
 
@@ -370,18 +376,22 @@ export function createServer({ bridge }: CreateServerOptions): McpServer {
       mimeType: "image/png",
     },
     async (uri) => {
-      const result = await bridge.request("get_board_image", {
-        pixelRatio: clampPixelRatio(undefined),
-      });
-      return {
-        contents: [
-          {
-            uri: uri.href,
-            mimeType: "image/png",
-            blob: result.pngBase64,
-          },
-        ],
-      };
+      try {
+        const result = await bridge.request("get_board_image", {
+          pixelRatio: clampPixelRatio(undefined),
+        });
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: "image/png",
+              blob: result.pngBase64,
+            },
+          ],
+        };
+      } catch (err) {
+        throw new Error(describeError(err));
+      }
     },
   );
 

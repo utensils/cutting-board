@@ -18,14 +18,23 @@ export interface BoardProps {
 
 export function Board({ exportScale, onEditorReady }: BoardProps) {
   const disposers = useRef<Array<() => void>>([]);
+  const unmounted = useRef(false);
 
   const handleMount = useCallback(
     (editor: Editor) => {
       onEditorReady?.(editor);
       void (async () => {
         await loadSavedBoard(editor);
-        disposers.current.push(installAutosave(editor));
-        disposers.current.push(await registerBridgeAdapter(editor));
+        const stopAutosave = installAutosave(editor);
+        const stopBridge = await registerBridgeAdapter(editor);
+        // If the board unmounted while the awaits were pending, dispose now —
+        // the cleanup effect already ran against an empty list.
+        if (unmounted.current) {
+          stopAutosave();
+          stopBridge();
+          return;
+        }
+        disposers.current.push(stopAutosave, stopBridge);
       })();
     },
     [onEditorReady],
@@ -33,6 +42,7 @@ export function Board({ exportScale, onEditorReady }: BoardProps) {
 
   useEffect(
     () => () => {
+      unmounted.current = true;
       disposers.current.forEach((dispose) => dispose());
       disposers.current = [];
     },

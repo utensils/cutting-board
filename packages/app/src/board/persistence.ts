@@ -19,11 +19,30 @@ export async function loadSavedBoard(editor: Editor): Promise<void> {
 }
 
 /**
+ * Cancellers for any pending (throttled) autosave write, keyed by editor. Lets
+ * the "Copy & Discard" flow stop a scheduled write before it resurrects the
+ * file it just deleted.
+ */
+const pendingCancellers = new WeakMap<Editor, () => void>();
+
+/** Cancel a scheduled-but-not-yet-written autosave for this editor, if any. */
+export function cancelPendingAutosave(editor: Editor): void {
+  pendingCancellers.get(editor)?.();
+}
+
+/**
  * Persist the document (not camera/selection) whenever the user changes it,
  * throttled. Returns a disposer.
  */
 export function installAutosave(editor: Editor, throttleMs = 800): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const cancel = () => {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
 
   const flush = () => {
     timer = null;
@@ -40,8 +59,11 @@ export function installAutosave(editor: Editor, throttleMs = 800): () => void {
     { source: "user", scope: "document" },
   );
 
+  pendingCancellers.set(editor, cancel);
+
   return () => {
-    if (timer !== null) clearTimeout(timer);
+    cancel();
     unlisten();
+    pendingCancellers.delete(editor);
   };
 }

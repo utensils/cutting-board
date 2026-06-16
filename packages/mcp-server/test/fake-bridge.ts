@@ -2,13 +2,14 @@
 // server tools can be exercised end-to-end without a real app.
 
 import type {
+  BridgeError,
   BridgeMethod,
   MethodParams,
   MethodResult,
   ShapeSummary,
 } from "@cutting-board/protocol";
 
-import { AppNotRunningError, type BridgeClient } from "../src/bridge-client.js";
+import { AppNotRunningError, BridgeRequestError, type BridgeClient } from "../src/bridge-client.js";
 
 interface FakeShape extends ShapeSummary {}
 
@@ -17,6 +18,8 @@ export class FakeBridge implements BridgeClient {
   private seq = 0;
   /** When true, every request rejects as if the app were closed. */
   notRunning = false;
+  /** When set, every request rejects with this typed bridge error. */
+  failWith?: BridgeError;
 
   private id(prefix: string): string {
     this.seq += 1;
@@ -28,6 +31,7 @@ export class FakeBridge implements BridgeClient {
     params: MethodParams[M],
   ): Promise<MethodResult[M]> {
     if (this.notRunning) throw new AppNotRunningError();
+    if (this.failWith) throw new BridgeRequestError(this.failWith);
     const result = this.handle(method, params as Record<string, unknown>);
     return result as MethodResult[M];
   }

@@ -97,28 +97,60 @@ async fn bind_listener() -> Option<(TcpListener, u16)> {
     None
 }
 
-/// Path to `bridge.json` in the app data dir, creating the dir if missing.
+/// Create `dir` if missing and (on unix) restrict it to the owner (`0700`).
+/// Shared by the modules that store secrets/state there (token, settings, board).
+pub fn ensure_private_dir(dir: &std::path::Path) -> Result<(), String> {
+    fs::create_dir_all(dir).map_err(|e| format!("create app data dir: {e}"))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(dir, fs::Permissions::from_mode(0o700))
+            .map_err(|e| format!("chmod dir {}: {e}", dir.display()))?;
+    }
+    Ok(())
+}
+
+/// Write `bytes` to `path` as an owner-only (`0600`) file. On unix the mode is
+/// applied at creation so there is no world-readable window (the token is the
+/// sole secret authorizing the bridge). Replaces any existing file.
+fn write_private_file(path: &std::path::Path, bytes: &[u8]) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        // Remove any pre-existing file so the mode applies to a fresh inode.
+        let _ = fs::remove_file(path);
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(path)
+            .map_err(|e| format!("open {}: {e}", path.display()))?;
+        file.write_all(bytes)
+            .map_err(|e| format!("write {}: {e}", path.display()))
+    }
+    #[cfg(not(unix))]
+    {
+        fs::write(path, bytes).map_err(|e| format!("write {}: {e}", path.display()))
+    }
+}
+
+/// Path to `bridge.json` in the app data dir, creating the (private) dir if missing.
 fn info_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
     let dir = app
         .path()
         .app_data_dir()
         .map_err(|e| format!("no app data dir: {e}"))?;
-    fs::create_dir_all(&dir).map_err(|e| format!("create app data dir: {e}"))?;
+    ensure_private_dir(&dir)?;
     Ok(dir.join(BRIDGE_INFO_FILENAME))
 }
 
-/// Write the discovery file with `0600` permissions.
+/// Write the discovery file, owner-only from creation.
 fn write_info<R: Runtime>(app: &AppHandle<R>, info: &BridgeInfo) -> Result<(), String> {
     let path = info_path(app)?;
     let json = serde_json::to_string_pretty(info).map_err(|e| e.to_string())?;
-    fs::write(&path, json).map_err(|e| format!("write {}: {e}", path.display()))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o600))
-            .map_err(|e| format!("chmod {}: {e}", path.display()))?;
-    }
-    Ok(())
+    write_private_file(&path, json.as_bytes())
 }
 
 /// Remove the discovery file (best effort), called on graceful shutdown.
@@ -186,6 +218,19 @@ pub async fn start<R: Runtime>(app: AppHandle<R>) -> Option<u16> {
     Some(port)
 }
 
+/// The bridge security decision: a frame authenticates iff it is a JSON object
+/// with `kind == "auth"` and a `token` equal to the per-launch secret. Kept as a
+/// pure function so the security boundary is unit-testable.
+fn is_authed(first_frame: &str, expected_token: &str) -> bool {
+    match serde_json::from_str::<Value>(first_frame) {
+        Ok(v) => {
+            v.get("kind").and_then(Value::as_str) == Some("auth")
+                && v.get("token").and_then(Value::as_str) == Some(expected_token)
+        }
+        Err(_) => false,
+    }
+}
+
 /// Handle a single socket: enforce auth, become the sole controller, then relay
 /// `request` frames until the socket closes or it is superseded.
 async fn handle_connection<R: Runtime>(
@@ -211,15 +256,7 @@ async fn handle_connection<R: Runtime>(
         Some(Err(e)) => return Err(format!("read auth: {e}")),
     };
 
-    let authed = match serde_json::from_str::<Value>(&first) {
-        Ok(v) => {
-            v.get("kind").and_then(Value::as_str) == Some("auth")
-                && v.get("token").and_then(Value::as_str) == Some(token.as_str())
-        }
-        Err(_) => false,
-    };
-
-    if !authed {
+    if !is_authed(&first, &token) {
         let _ = write.send(auth_result(false, Some("unauthorized"))).await;
         return Ok(());
     }
@@ -293,6 +330,11 @@ async fn handle_connection<R: Runtime>(
     // --- Teardown: relinquish the controller slot only if it is still ours. -
     // If a newer connection already replaced us, its generation differs and we
     // must leave it intact.
+    //
+    // We do not abort in-flight dispatch tasks spawned by this socket: each
+    // self-clears its `pending` entry on the request timeout, request ids are
+    // globally unique, and a late `bridge_reply` for an unknown id is a no-op,
+    // so an orphaned request is bounded (<= REQUEST_TIMEOUT) and harmless.
     {
         let state = app.state::<AppState>();
         let mut controller = state.controller.lock().await;
@@ -491,6 +533,34 @@ mod tests {
         assert_eq!(v["error"]["code"], "not_found");
         assert_eq!(v["error"]["message"], "no shape shape:xyz");
         assert!(v.get("result").is_none());
+    }
+
+    #[test]
+    fn is_authed_accepts_correct_kind_and_token() {
+        assert!(is_authed(r#"{"kind":"auth","token":"secret"}"#, "secret"));
+    }
+
+    #[test]
+    fn is_authed_rejects_wrong_or_missing_token() {
+        assert!(!is_authed(r#"{"kind":"auth","token":"nope"}"#, "secret"));
+        assert!(!is_authed(r#"{"kind":"auth"}"#, "secret"));
+        assert!(!is_authed(r#"{"kind":"auth","token":null}"#, "secret"));
+    }
+
+    #[test]
+    fn is_authed_rejects_non_auth_kind() {
+        assert!(!is_authed(
+            r#"{"kind":"request","token":"secret"}"#,
+            "secret"
+        ));
+        assert!(!is_authed(r#"{"token":"secret"}"#, "secret"));
+    }
+
+    #[test]
+    fn is_authed_rejects_malformed_frames() {
+        assert!(!is_authed("not json", "secret"));
+        assert!(!is_authed(r#""just a string""#, "secret"));
+        assert!(!is_authed("42", "secret"));
     }
 
     #[test]

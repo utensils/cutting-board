@@ -205,3 +205,26 @@ describe("cutting-board MCP server (in-process)", () => {
     expect(textOf(result)).toMatch(/validation|invalid/i);
   });
 });
+
+describe("typed bridge errors", () => {
+  it("maps a BridgeRequestError to its documented code in tool output", async () => {
+    const bridge = new FakeBridge();
+    bridge.failWith = { code: "editor_not_ready", message: "no editor yet" };
+    const client = await connect(bridge);
+    const result = (await client.callTool({
+      name: "add_sticky",
+      arguments: { text: "x" },
+    })) as CallToolResult;
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toMatch(/Bridge error \(editor_not_ready\): no editor yet/);
+  });
+
+  it("surfaces the friendly message when a resource read fails", async () => {
+    const bridge = new FakeBridge();
+    bridge.failWith = { code: "timeout", message: "no response" };
+    const client = await connect(bridge);
+    await expect(client.readResource({ uri: "board://snapshot" })).rejects.toThrow(
+      /Bridge error \(timeout\): no response/,
+    );
+  });
+});
