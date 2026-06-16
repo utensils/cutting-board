@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Menu-bar-only baseline: no Dock icon / App Switcher entry at idle. The Rust
+    shell raises the activation policy to Regular while the board window is
+    shown, and lowers it back to Accessory when hidden. Tauri merges this file
+    with the generated Info.plist for macOS bundles.
+  -->
+  <key>LSUIElement</key>
+  <true/>
+</dict>
+</plist>
