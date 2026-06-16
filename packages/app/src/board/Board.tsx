@@ -6,7 +6,8 @@ import { BoardConfigContext } from "./BoardConfigContext";
 import { installAutosave, loadSavedBoard } from "./persistence";
 import { registerBridgeAdapter } from "../bridge/adapter";
 
-const components: TLComponents = { SharePanel: DoneButton };
+// Single-board capture tool: keep the Done button, drop the multi-page menu.
+const components: TLComponents = { SharePanel: DoneButton, PageMenu: null };
 
 // Optional tldraw license key removes the watermark; unset = free watermarked build.
 const licenseKey = import.meta.env.VITE_TLDRAW_LICENSE_KEY;
