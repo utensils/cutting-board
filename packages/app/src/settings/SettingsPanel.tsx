@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useEffect, useState } from "react";
 import type { Settings } from "../lib/ipc";
 import { chordToAccelerator, isValidAccelerator, prettyAccelerator } from "../lib/accelerator";
 
@@ -17,27 +17,40 @@ export function SettingsPanel({ settings, onClose, onSave }: SettingsPanelProps)
 
   useEffect(() => setDraft(settings), [settings]);
 
-  const onHotkeyKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
-    if (!capturing) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.key === "Escape") {
-      setCapturing(false);
-      return;
-    }
-    const accelerator = chordToAccelerator({
-      metaKey: e.metaKey,
-      ctrlKey: e.ctrlKey,
-      altKey: e.altKey,
-      shiftKey: e.shiftKey,
-      code: e.nativeEvent.code,
-      key: e.key,
-    });
-    if (accelerator) {
-      setDraft((d) => ({ ...d, hotkey: accelerator }));
-      setCapturing(false);
-    }
-  };
+  // Own keyboard at the window level (capture phase) while the panel is open, so
+  // tldraw's canvas key handlers and focus management can't swallow the chord.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (capturing) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.key === "Escape") {
+          setCapturing(false);
+          return;
+        }
+        const accelerator = chordToAccelerator({
+          metaKey: e.metaKey,
+          ctrlKey: e.ctrlKey,
+          altKey: e.altKey,
+          shiftKey: e.shiftKey,
+          code: e.code,
+          key: e.key,
+        });
+        if (accelerator) {
+          setDraft((d) => ({ ...d, hotkey: accelerator }));
+          setCapturing(false);
+        }
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [capturing, onClose]);
 
   const valid = isValidAccelerator(draft.hotkey);
 
@@ -72,7 +85,6 @@ export function SettingsPanel({ settings, onClose, onSave }: SettingsPanelProps)
             type="button"
             className={`cb-hotkey${capturing ? " is-capturing" : ""}`}
             onClick={() => setCapturing(true)}
-            onKeyDown={onHotkeyKeyDown}
           >
             {capturing ? "Press a shortcut…" : prettyAccelerator(draft.hotkey)}
           </button>

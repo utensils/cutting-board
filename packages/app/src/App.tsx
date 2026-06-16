@@ -43,11 +43,8 @@ export default function App() {
       const meta = e.metaKey || e.ctrlKey;
 
       if (e.key === "Escape") {
-        if (settingsOpenRef.current) {
-          e.preventDefault();
-          setSettingsOpen(false);
-          return;
-        }
+        // While settings is open, the panel owns Escape (cancel capture / close).
+        if (settingsOpenRef.current) return;
         if (!editor || editor.getEditingShapeId()) return; // let tldraw cancel editing
         e.preventDefault();
         e.stopPropagation();
