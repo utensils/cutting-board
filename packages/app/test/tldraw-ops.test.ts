@@ -21,6 +21,7 @@ import {
   listShapes,
   getStatus,
   getBoardSnapshot,
+  executeBridgeOp,
   BridgeOpError,
 } from "../src/board/tldraw-ops";
 
@@ -147,5 +148,47 @@ describe("reads", () => {
     createGeoShape(editor, { shape: "rectangle" });
     expect(getStatus(editor).shapeCount).toBe(1);
     expect(getBoardSnapshot(editor).shapeCount).toBe(1);
+  });
+});
+
+describe("updateShape props escape hatch", () => {
+  it("merges raw props and moves via x/y", () => {
+    const id = createGeoShape(editor, { shape: "rectangle", w: 100, h: 100 });
+    expect(updateShape(editor, { id, props: { w: 321 } })).toBe(true);
+    expect((get(id)!.props as { w: number }).w).toBe(321);
+    expect(updateShape(editor, { id, x: 10, y: 20 })).toBe(true);
+    const moved = get(id)!;
+    expect(moved.x).toBe(10);
+    expect(moved.y).toBe(20);
+  });
+
+  it("ignores an invalid top-level color but still applies raw props", () => {
+    const id = createGeoShape(editor, { shape: "rectangle", color: "blue" });
+    expect(updateShape(editor, { id, color: "chartreuse" as never, props: { w: 222 } })).toBe(true);
+    const shape = get(id)!;
+    expect((shape.props as { color: string }).color).toBe("blue");
+    expect((shape.props as { w: number }).w).toBe(222);
+  });
+});
+
+describe("executeBridgeOp", () => {
+  it("wraps each op result in the documented response shape", async () => {
+    expect(await executeBridgeOp(editor, "add_sticky", { text: "hi" })).toMatchObject({
+      id: expect.any(String),
+    });
+    const shape = (await executeBridgeOp(editor, "add_shape", { shape: "rectangle" })) as { id: string };
+    expect(typeof shape.id).toBe("string");
+    expect(await executeBridgeOp(editor, "list_shapes", {})).toHaveProperty("shapes");
+    expect(await executeBridgeOp(editor, "update_shape", { id: shape.id, x: 5, y: 5 })).toEqual({ ok: true });
+    expect(await executeBridgeOp(editor, "move_shape", { id: "shape:gone", x: 0, y: 0 })).toEqual({ ok: false });
+    expect(await executeBridgeOp(editor, "clear_board", {})).toMatchObject({
+      deletedCount: expect.any(Number),
+    });
+  });
+
+  it("rejects an unknown method with code unsupported_method", async () => {
+    await expect(executeBridgeOp(editor, "frobnicate", {})).rejects.toMatchObject({
+      code: "unsupported_method",
+    });
   });
 });

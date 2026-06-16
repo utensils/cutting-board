@@ -59,7 +59,10 @@ export default function App() {
 
       if (meta && e.key === "Enter") {
         e.preventDefault();
-        void performDone(editor, "dismiss", exportScaleRef.current);
+        void performDone(editor, "dismiss", exportScaleRef.current).then((result) => {
+          // On an empty board there's nothing to copy; still dismiss like Esc.
+          if (result === "empty") void hideMainWindow();
+        });
       } else if (meta && e.shiftKey && e.code === "KeyV") {
         e.preventDefault();
         void pasteImageFromClipboard(editor);

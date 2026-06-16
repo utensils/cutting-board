@@ -13,6 +13,7 @@ export function SettingsPanel({ settings, onClose, onSave }: SettingsPanelProps)
   const [draft, setDraft] = useState<Settings>(settings);
   const [capturing, setCapturing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => setDraft(settings), [settings]);
 
@@ -43,9 +44,13 @@ export function SettingsPanel({ settings, onClose, onSave }: SettingsPanelProps)
   const save = async () => {
     if (!valid || saving) return;
     setSaving(true);
+    setSaveError(null);
     try {
       await onSave(draft);
       onClose();
+    } catch (err) {
+      console.error("[cutting-board] failed to save settings:", err);
+      setSaveError("Couldn't save settings — please try again.");
     } finally {
       setSaving(false);
     }
@@ -94,6 +99,8 @@ export function SettingsPanel({ settings, onClose, onSave }: SettingsPanelProps)
             onChange={(e) => setDraft((d) => ({ ...d, exportScale: Number(e.target.value) }))}
           />
         </label>
+
+        {saveError && <small className="cb-error">{saveError}</small>}
 
         <div className="cb-settings__actions">
           <button type="button" onClick={onClose}>

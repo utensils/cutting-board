@@ -46,7 +46,7 @@ fn settings_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
         .path()
         .app_data_dir()
         .map_err(|e| format!("no app data dir: {e}"))?;
-    fs::create_dir_all(&dir).map_err(|e| format!("create app data dir: {e}"))?;
+    crate::bridge::ensure_private_dir(&dir)?;
     Ok(dir.join(SETTINGS_FILENAME))
 }
 

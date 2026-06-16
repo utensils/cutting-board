@@ -5,6 +5,7 @@
 import type { Editor } from "tldraw";
 import { copyBoardToClipboard } from "./clipboard";
 import { clearBoard } from "./tldraw-ops";
+import { cancelPendingAutosave } from "./persistence";
 import { hideMainWindow, clearSavedBoard } from "../lib/ipc";
 
 export type DoneVariant = "dismiss" | "discard" | "keep";
@@ -27,6 +28,9 @@ export async function performDone(
 
   if (variant === "discard") {
     clearBoard(editor);
+    // clearBoard just scheduled a throttled autosave; cancel it so it can't
+    // re-write the file we are about to delete.
+    cancelPendingAutosave(editor);
     await clearSavedBoard();
   }
   if (variant !== "keep") {
