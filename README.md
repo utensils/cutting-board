@@ -1,10 +1,16 @@
 <p align="center"><img src="assets/logo.png" width="128" alt="Cutting Board" /></p>
 
-# Cutting Board
+<h1 align="center">Cutting Board</h1>
 
-A macOS menu-bar whiteboard for quick diagrams, sticky notes, and annotations — copy to clipboard and paste anywhere.
+<p align="center"><strong><em>Prep your ideas.</em></strong></p>
 
-Open it with a global hotkey, sketch an idea, paste in a screenshot, connect a few shapes, then click **Done** to copy the whole board as a PNG and paste it straight into Slack, a doc, or an issue.
+<p align="center">A macOS menu-bar whiteboard for quick diagrams, sticky notes, and annotations — copy to clipboard and paste anywhere.</p>
+
+## Why Cutting Board?
+
+You're mid-conversation in Slack and want to convey an idea or some feedback. Instead of reaching for a heavyweight design tool, you hit a global hotkey and a whiteboard drops in over whatever you're doing. Sketch the idea, paste in a screenshot to annotate, connect a few boxes with arrows, drop a sticky note — then click **Done**. The board lands on your clipboard as a PNG, ready to paste straight back into Slack, a doc, or an issue. Hit the hotkey again later and your board is right where you left it, so you can iterate as the conversation evolves.
+
+Think of it as Preview's markup mode reimagined for fast idea-sharing — with real diagram connectors that stay attached to the shapes they join, colored sticky notes, and an [MCP](https://modelcontextprotocol.io) server so an AI assistant can read and edit the board alongside you.
 
 ## Features
 
