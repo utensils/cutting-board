@@ -76,6 +76,10 @@ export function SettingsPanel({ settings, onClose, onSave }: SettingsPanelProps)
           >
             {capturing ? "Press a shortcut…" : draft.hotkey}
           </button>
+          <small className="cb-hint">
+            This opens Cutting Board from anywhere. Click the field, then press the keys (at
+            least one modifier).
+          </small>
           {!valid && <small className="cb-error">Choose a key with at least one modifier.</small>}
         </label>
 

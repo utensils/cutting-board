@@ -53,6 +53,9 @@ body,
   overflow: visible;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   font-size: 13px;
+  /* tldraw's UI layer is pointer-events:none and re-enables per element; our
+     injected SharePanel content must opt back in or clicks fall through. */
+  pointer-events: all;
 }
 
 .cb-done__main,
@@ -174,6 +177,12 @@ body,
 
 .cb-error {
   color: #c0392b;
+}
+
+.cb-hint {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .cb-settings__actions {

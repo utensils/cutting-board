@@ -40,6 +40,9 @@ pub fn setup(app: &App) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id().as_ref() {
             MENU_OPEN => window::toggle(app),
             MENU_SETTINGS => {
+                // Show the window first — otherwise the settings panel opens
+                // inside the still-hidden window and is never seen.
+                window::show(app);
                 let _ = app.emit(events::UI_OPEN_SETTINGS, ());
             }
             MENU_QUIT => app.exit(0),
