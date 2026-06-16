@@ -17,7 +17,6 @@
     "dev": "pnpm --filter @cutting-board/app dev",
     "build": "pnpm -r --filter \"./packages/**\" build",
     "test": "pnpm -r --filter \"./packages/**\" test",
-    "lint": "pnpm -r --filter \"./packages/**\" lint",
     "typecheck": "pnpm -r --filter \"./packages/**\" typecheck",
     "tauri": "pnpm --filter @cutting-board/app tauri",
     "tauri:dev": "pnpm --filter @cutting-board/app tauri dev",
