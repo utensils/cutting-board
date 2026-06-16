@@ -133,7 +133,7 @@ pnpm icon        # regenerate app icons from assets/logo.png
 cargo test --manifest-path packages/app/src-tauri/Cargo.toml
 ```
 
-> **Note:** `assets/logo.png` is currently a placeholder. Replace it with the final artwork and run `pnpm icon` to regenerate the app icon set.
+> The app icon is generated from `assets/logo.png`. Replace that file and run `pnpm icon` to regenerate the full icon set.
 
 OS-level behaviors (global hotkey, clipboard paste, tray, multi-monitor) can't be unit-tested — see [`docs/manual-test-checklist.md`](docs/manual-test-checklist.md) for the per-release manual checklist.
 
