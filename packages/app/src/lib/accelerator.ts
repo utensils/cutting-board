@@ -68,6 +68,35 @@ export function chordToAccelerator(chord: KeyChord): string | null {
   return [...mods, key].join("+");
 }
 
+const ACCELERATOR_SYMBOLS: Record<string, string> = {
+  CmdOrCtrl: "⌘",
+  Cmd: "⌘",
+  Command: "⌘",
+  Meta: "⌘",
+  Super: "⌘",
+  Ctrl: "⌃",
+  Control: "⌃",
+  Alt: "⌥",
+  Option: "⌥",
+  Shift: "⇧",
+  Enter: "⏎",
+  Tab: "⇥",
+  Escape: "⎋",
+  Up: "↑",
+  Down: "↓",
+  Left: "←",
+  Right: "→",
+};
+
+/** Render an accelerator with Mac symbols, e.g. "CmdOrCtrl+Shift+Space" → "⌘⇧Space". */
+export function prettyAccelerator(accelerator: string): string {
+  return accelerator
+    .split("+")
+    .filter(Boolean)
+    .map((token) => ACCELERATOR_SYMBOLS[token] ?? token)
+    .join(" ");
+}
+
 /** Validate an accelerator string: at least one non-modifier token. */
 export function isValidAccelerator(accelerator: string): boolean {
   const parts = accelerator.split("+").filter(Boolean);

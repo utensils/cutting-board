@@ -1,6 +1,6 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
 import type { Settings } from "../lib/ipc";
-import { chordToAccelerator, isValidAccelerator } from "../lib/accelerator";
+import { chordToAccelerator, isValidAccelerator, prettyAccelerator } from "../lib/accelerator";
 
 export interface SettingsPanelProps {
   settings: Settings;
@@ -74,7 +74,7 @@ export function SettingsPanel({ settings, onClose, onSave }: SettingsPanelProps)
             onClick={() => setCapturing(true)}
             onKeyDown={onHotkeyKeyDown}
           >
-            {capturing ? "Press a shortcut…" : draft.hotkey}
+            {capturing ? "Press a shortcut…" : prettyAccelerator(draft.hotkey)}
           </button>
           <small className="cb-hint">
             This opens Cutting Board from anywhere. Click the field, then press the keys (at

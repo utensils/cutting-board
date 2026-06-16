@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { chordToAccelerator, normalizeKey, isValidAccelerator } from "../src/lib/accelerator";
+import {
+  chordToAccelerator,
+  normalizeKey,
+  isValidAccelerator,
+  prettyAccelerator,
+} from "../src/lib/accelerator";
 import { uint8ToBase64, base64ToUint8 } from "../src/lib/base64";
 import { plainTextFromRichText } from "../src/lib/richtext";
 
@@ -44,6 +49,14 @@ describe("isValidAccelerator", () => {
     expect(isValidAccelerator("CmdOrCtrl")).toBe(false);
     expect(isValidAccelerator("CmdOrCtrl+Shift")).toBe(false);
     expect(isValidAccelerator("CmdOrCtrl+A+B")).toBe(false);
+  });
+});
+
+describe("prettyAccelerator", () => {
+  it("renders modifiers as Mac symbols", () => {
+    expect(prettyAccelerator("CmdOrCtrl+Shift+Space")).toBe("⌘ ⇧ Space");
+    expect(prettyAccelerator("CmdOrCtrl+Alt+B")).toBe("⌘ ⌥ B");
+    expect(prettyAccelerator("F5")).toBe("F5");
   });
 });
 
