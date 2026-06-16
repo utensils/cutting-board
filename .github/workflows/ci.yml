@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (macOS)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/app/src-tauri -> target
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (TS)
+        run: pnpm -r --filter "./packages/**" typecheck
+
+      - name: Test (TS)
+        run: pnpm -r --filter "./packages/**" test
+
+      - name: Build frontend & MCP server
+        run: |
+          pnpm --filter @cutting-board/app build
+          pnpm --filter @cutting-board/mcp-server build
+
+      - name: Rust formatting
+        run: cargo fmt --manifest-path packages/app/src-tauri/Cargo.toml --check
+
+      - name: Rust lint
+        run: cargo clippy --manifest-path packages/app/src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Rust tests
+        run: cargo test --manifest-path packages/app/src-tauri/Cargo.toml
+
+  bundle:
+    name: Build app bundle (unsigned)
+    runs-on: macos-14
+    # The full `tauri build` is slow; only run it on demand or for release tags.
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/app/src-tauri -> target
+      - run: pnpm install --frozen-lockfile
+
+      # Code signing & notarization are intentionally disabled. To enable, add
+      # the Apple credentials as repository secrets and uncomment the `env:`
+      # block (see docs/architecture.md → Packaging):
+      #   APPLE_SIGNING_IDENTITY, and either
+      #   (APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID) or
+      #   (APPLE_API_KEY, APPLE_API_ISSUER, APPLE_API_KEY_PATH)
+      - name: Build unsigned .app
+        run: pnpm tauri:build --bundles app
+        # env:
+        #   APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        #   APPLE_ID: ${{ secrets.APPLE_ID }}
+        #   APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+        #   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cutting-board-macos
+          path: packages/app/src-tauri/target/release/bundle/macos/*.app
+          if-no-files-found: error
