@@ -1,6 +1,8 @@
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color-scheme: light dark;
+  --cb-navy: #283854;
+  --cb-navy-hover: #344a6e;
 }
 
 html,
@@ -9,18 +11,195 @@ body,
   margin: 0;
   width: 100%;
   height: 100%;
-  /* Transparent so the rounded, borderless Tauri window shows through. */
+  overflow: hidden;
+  /* Transparent so the rounded, borderless window shows the desktop at corners. */
   background: transparent;
 }
 
-.placeholder {
+/* The board fills the window; rounded corners are clipped here since macOS does
+   not auto-round undecorated windows. */
+.cb-board {
+  position: fixed;
+  inset: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+/* Drag handle for the borderless window (top-center, above the canvas). */
+.cb-drag {
+  position: fixed;
+  top: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 46px;
+  height: 16px;
+  border-radius: 0 0 8px 8px;
+  background: rgba(40, 56, 84, 0.12);
+  z-index: 600;
+  cursor: grab;
+}
+.cb-drag:hover {
+  background: rgba(40, 56, 84, 0.22);
+}
+
+/* --- Done split-button (tldraw SharePanel slot, top-right) --- */
+.cb-done {
+  position: relative;
+  display: inline-flex;
+  margin: 8px;
+  border-radius: 8px;
+  overflow: visible;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  font-size: 13px;
+}
+
+.cb-done__main,
+.cb-done__caret {
+  border: none;
+  background: var(--cb-navy);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 14px;
+  height: 36px;
+}
+
+.cb-done__main {
+  border-radius: 8px 0 0 8px;
+  min-width: 76px;
+}
+
+.cb-done__caret {
+  border-radius: 0 8px 8px 0;
+  padding: 8px 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.cb-done__main:hover:not(:disabled),
+.cb-done__caret:hover:not(:disabled) {
+  background: var(--cb-navy-hover);
+}
+
+.cb-done__main:disabled,
+.cb-done__caret:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cb-done__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  padding: 4px;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
+}
+
+.cb-done__menu button {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #1d2733;
+  font-size: 13px;
+}
+
+.cb-done__menu button:hover {
+  background: #eef1f6;
+}
+
+/* --- Settings panel --- */
+.cb-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  gap: 0.5rem;
-  border-radius: 12px;
-  background: #f3f4f6;
-  color: #283854;
+  z-index: 2000;
+}
+
+.cb-settings {
+  width: 360px;
+  max-width: calc(100vw - 48px);
+  background: #fff;
+  color: #1d2733;
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
+}
+
+.cb-settings h2 {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+.cb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+  font-size: 13px;
+}
+
+.cb-field--row {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.cb-hotkey {
+  padding: 8px 12px;
+  border: 1px solid #c9d2e0;
+  border-radius: 8px;
+  background: #f7f9fc;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cb-hotkey.is-capturing {
+  border-color: var(--cb-navy);
+  background: #eef3fb;
+}
+
+.cb-error {
+  color: #c0392b;
+}
+
+.cb-settings__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.cb-settings__actions button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #c9d2e0;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cb-settings__actions .cb-primary {
+  background: var(--cb-navy);
+  border-color: var(--cb-navy);
+  color: #fff;
+  font-weight: 600;
+}
+
+.cb-settings__actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
